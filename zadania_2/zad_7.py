@@ -2,18 +2,19 @@ import argparse
 import requests
 from typing import Optional
 
+
 class Brewery:
     def __init__(
-            self,
-            id: str,
-            name: str,
-            brewery_type: str,
-            address_1: str,
-            city: str,
-            country: str,
-            state: Optional[str] = None,
-            phone: Optional[str] = None,
-            website_url: Optional[str] = None
+        self,
+        id: str,
+        name: str,
+        brewery_type: str,
+        address_1: str,
+        city: str,
+        country: str,
+        state: Optional[str] = None,
+        phone: Optional[str] = None,
+        website_url: Optional[str] = None,
     ):
         self.id = id
         self.name = name
@@ -37,6 +38,7 @@ class Brewery:
             f"Telefon: {self.phone}, "
             f"Strona internetowa: {self.website_url}"
         )
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--city", type=str, help="Nazwa miasta")
@@ -64,7 +66,7 @@ for item in data:
         country=item["country"],
         state=item["state"],
         phone=item["phone"],
-        website_url=item["website_url"]
+        website_url=item["website_url"],
     )
 
     breweries.append(brewery)
