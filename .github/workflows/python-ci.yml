@@ -1,0 +1,26 @@
+name: Python CI
+
+on:
+  push:
+
+jobs:
+  python-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install pycodestyle
+        run: python -m pip install pycodestyle
+
+      - name: Check Python syntax
+        run: python -m compileall -q -x '(^|/)(\.venv|venv)/' .
+
+      - name: Check PEP8
+        run: python -m pycodestyle --exclude=.venv,venv,__pycache__ .
