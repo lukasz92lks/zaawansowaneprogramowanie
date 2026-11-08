@@ -1,0 +1,5 @@
+Rozmowa 1;done
+Rozmowa 2;done
+Rozmowa 3;done
+Rozmowa 4;done
+Rozmowa 5;done
