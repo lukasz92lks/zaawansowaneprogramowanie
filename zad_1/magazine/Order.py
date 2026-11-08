@@ -1,6 +1,6 @@
 
-from . import utils
+import magazine.utils
 
 
 def show_order():
-    print(utils.get_info())
+    print(magazine.utils.get_info())
