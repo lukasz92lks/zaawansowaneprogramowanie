@@ -1,51 +1,41 @@
-import time
-from contextlib import closing
+import pika
 
-from producer import connect
-
-
-def claim_job(connection):
-    with connection:
-        connection.execute("BEGIN IMMEDIATE")
-        job = connection.execute("""
-            SELECT id FROM jobs
-            WHERE status = 'pending'
-            ORDER BY id
-            LIMIT 1
-        """).fetchone()
-
-        if job is None:
-            return None
-
-        job_id = job[0]
-        connection.execute(
-            "UPDATE jobs SET status = 'in_progress' WHERE id = ?",
-            (job_id,),
-        )
-
-    return job_id
+from producer import DONE_QUEUE, WORK_QUEUE, connect
 
 
 def main():
-    with closing(connect()) as connection:
-        while True:
-            job_id = claim_job(connection)
+    with connect() as connection:
+        channel = connection.channel()
+        channel.queue_declare(queue=WORK_QUEUE, durable=True)
+        channel.queue_declare(queue=DONE_QUEUE, durable=True)
+        channel.confirm_delivery()
 
-            if job_id is None:
-                time.sleep(5)
+        while True:
+            method, _, body = channel.basic_get(
+                queue=WORK_QUEUE, auto_ack=False
+            )
+
+            if method is None:
+                connection.sleep(5)
                 continue
 
-            print(f"Rozpoczynam rozmowę {job_id}")
-            time.sleep(30)
+            message = body.decode("utf-8")
+            print(f"{message}: in_progress")
+            connection.sleep(30)
 
-            with connection:
-                connection.execute(
-                    "UPDATE jobs SET status = 'done' WHERE id = ?",
-                    (job_id,),
-                )
-
-            print(f"Zakończono rozmowę {job_id}")
+            channel.basic_publish(
+                exchange="",
+                routing_key=DONE_QUEUE,
+                body=body,
+                properties=pika.BasicProperties(delivery_mode=2),
+                mandatory=True,
+            )
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+            print(f"{message}: done")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Zatrzymano consumera")

@@ -1,31 +1,35 @@
-import sqlite3
-from contextlib import closing
-from pathlib import Path
+from uuid import uuid4
 
-DATABASE = Path(__file__).with_name("queue.db")
+import pika
+
+WORK_QUEUE = "rozmowy"
+DONE_QUEUE = "rozmowy_done"
 
 
 def connect():
-    connection = sqlite3.connect(DATABASE, timeout=10)
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS jobs (
-            id INTEGER PRIMARY KEY,
-            status TEXT NOT NULL
-                CHECK (status IN ('pending', 'in_progress', 'done'))
-        )
-    """)
-    return connection
+    credentials = pika.PlainCredentials("student", "student123")
+    parameters = pika.ConnectionParameters(
+        host="127.0.0.1", port=5672, credentials=credentials
+    )
+    return pika.BlockingConnection(parameters)
 
 
 def main():
-    with closing(connect()) as connection:
-        with connection:
-            cursor = connection.execute(
-                "INSERT INTO jobs (status) VALUES (?)", ("pending",)
-            )
-            job_id = cursor.lastrowid
+    message = f"Rozmowa {uuid4()}"
 
-    print(f"Dodano rozmowę {job_id}")
+    with connect() as connection:
+        channel = connection.channel()
+        channel.queue_declare(queue=WORK_QUEUE, durable=True)
+        channel.confirm_delivery()
+        channel.basic_publish(
+            exchange="",
+            routing_key=WORK_QUEUE,
+            body=message.encode("utf-8"),
+            properties=pika.BasicProperties(delivery_mode=2),
+            mandatory=True,
+        )
+
+    print(f"{message}: pending")
 
 
 if __name__ == "__main__":
