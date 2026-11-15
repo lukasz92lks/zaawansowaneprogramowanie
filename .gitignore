@@ -1,1 +1,7 @@
+__pycache__/
+*.pyc
 .venv/
+queue.txt
+*.lock
+/.idea/
+/zadania1/queue.db
