@@ -3,3 +3,13 @@ Rozmowa 2;done
 Rozmowa 3;done
 Rozmowa 4;done
 Rozmowa 5;done
+Rozmowa 6;done
+Rozmowa 7;done
+Rozmowa 8;done
+Rozmowa 9;done
+Rozmowa 10;in_progress
+Rozmowa 11;done
+Rozmowa 12;done
+Rozmowa 13;done
+Rozmowa 14;done
+Rozmowa 15;done
