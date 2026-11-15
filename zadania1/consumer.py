@@ -1,59 +1,51 @@
-
 import time
-from pathlib import Path
-from filelock import FileLock
+from contextlib import closing
 
-QUEUE_FILE = Path(__file__).parent / "queue.txt"
-LOCK_FILE = str(QUEUE_FILE) + ".lock"
+from producer import connect
 
-while True:
-    job_name = None
 
-    with FileLock(LOCK_FILE):
-        if QUEUE_FILE.exists():
-            jobs = QUEUE_FILE.read_text(
-                encoding="utf-8"
-            ).splitlines()
-        else:
-            jobs = []
+def claim_job(connection):
+    with connection:
+        connection.execute("BEGIN IMMEDIATE")
+        job = connection.execute("""
+            SELECT id FROM jobs
+            WHERE status = 'pending'
+            ORDER BY id
+            LIMIT 1
+        """).fetchone()
 
-        for i, job in enumerate(jobs):
-            name, status = job.split(";")
+        if job is None:
+            return None
 
-            if status == "pending":
-                jobs[i] = f"{name};in_progress"
-                job_name = name
-                break
-
-        if job_name is not None:
-            QUEUE_FILE.write_text(
-                "\n".join(jobs) + "\n",
-                encoding="utf-8"
-            )
-
-    if job_name is None:
-        print("Brak zadan, sprawdzam za 5 sekund")
-        time.sleep(5)
-        continue
-
-    print(f"Rozpoczynam: {job_name}")
-    time.sleep(30)
-
-    with FileLock(LOCK_FILE):
-        jobs = QUEUE_FILE.read_text(
-            encoding="utf-8"
-        ).splitlines()
-
-        for i, job in enumerate(jobs):
-            name, status = job.split(";")
-
-            if name == job_name and status == "in_progress":
-                jobs[i] = f"{name};done"
-                break
-
-        QUEUE_FILE.write_text(
-            "\n".join(jobs) + "\n",
-            encoding="utf-8"
+        job_id = job[0]
+        connection.execute(
+            "UPDATE jobs SET status = 'in_progress' WHERE id = ?",
+            (job_id,),
         )
 
-    print(f"Zakonczono: {job_name}")
+    return job_id
+
+
+def main():
+    with closing(connect()) as connection:
+        while True:
+            job_id = claim_job(connection)
+
+            if job_id is None:
+                time.sleep(5)
+                continue
+
+            print(f"Rozpoczynam rozmowę {job_id}")
+            time.sleep(30)
+
+            with connection:
+                connection.execute(
+                    "UPDATE jobs SET status = 'done' WHERE id = ?",
+                    (job_id,),
+                )
+
+            print(f"Zakończono rozmowę {job_id}")
+
+
+if __name__ == "__main__":
+    main()
